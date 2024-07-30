@@ -1,26 +1,44 @@
 #!/usr/bin/env python3
-
 """
-5. Basic Flask app
+A Basic flask application
 """
+from typing import (
+    Dict, Union
+)
 
-from flask import Flask, render_template, request, g
+from flask import Flask
+from flask import g, request
+from flask import render_template
 from flask_babel import Babel
 
+
+class Config(object):
+    """
+    Application configuration class
+    """
+    LANGUAGES = ['en', 'fr']
+    BABEL_DEFAULT_LOCALE = 'en'
+    BABEL_DEFAULT_TIMEZONE = 'UTC'
+
+
+# Instantiate the application object
 app = Flask(__name__)
+app.config.from_object(Config)
+
+# Wrap the application with Babel
 babel = Babel(app)
 
 
-class Config:
+@babel.localeselector
+def get_locale() -> str:
     """
-    Config class.
+    Gets locale from request object
     """
-    LANGUAGES = ["en", "fr"]
-    BABEL_DEFAULT_LOCALE = "en"
-    BABEL_DEFAULT_TIMEZONE = "UTC"
+    locale = request.args.get('locale', '').strip()
+    if locale and locale in Config.LANGUAGES:
+        return locale
+    return request.accept_languages.best_match(app.config['LANGUAGES'])
 
-
-app.config.from_object(Config)
 
 users = {
     1: {"name": "Balou", "locale": "fr", "timezone": "Europe/Paris"},
@@ -30,42 +48,32 @@ users = {
 }
 
 
-def get_user(login_as):
+def get_user(id) -> Union[Dict[str, Union[str, None]], None]:
     """
-    get_user.
+    Validate user login details
+    Args:
+        id (str): user id
+    Returns:
+        (Dict): user dictionary if id is valid else None
     """
-    try:
-        return users.get(int(login_as))
-OBOBOB    except Exception:
-        return
+    return users.get(int(id), 0)
 
 
 @app.before_request
 def before_request():
     """
-    before_request
+    Adds valid user to the global session object `g`
     """
-    g.user = get_user(request.args.get("login_as"))
+    setattr(g, 'user', get_user(request.args.get('login_as', 0)))
 
 
-@babel.localeselector
-OBOBOBdef get_locale():
+@app.route('/', strict_slashes=False)
+def index() -> str:
     """
-OBOBOBOBOBOB    get_locale.
-    """
-    locale = request.args.get("locale")
-    if locale:
-OBOBOB        return locale
-    return request.accept_languages.best_match(app.config['LANGUAGES'])
-
-
-@app.route('/', methods=["GET"], strict_slashes=False)
-def hello():
-    """
-    hello.
+    Renders a basic html template
     """
     return render_template('5-index.html')
 
 
-OBOBOBif __name__ == "__main__":
-    app.run(host="0.0.0.0", port="5000")
+if __name__ == '__main__':
+    app.run()
